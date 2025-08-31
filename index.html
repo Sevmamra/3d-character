@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>3D Character — Click Actions</title>
+<style>
+  :root{
+    --size: min(46vmin, 520px);
+  }
+  /* Page: no visible text, centered character */
+  html,body{
+    height:100%;
+    margin:0;
+    background: linear-gradient(180deg, #eaf4ff 0%, #ffffff 100%);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+
+  /* Stage holds perspective and shadow */
+  .stage{
+    width:var(--size);
+    height:var(--size);
+    position:relative;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    perspective:1200px; /* creates 3D feeling */
+    -webkit-perspective:1200px;
+    user-select:none;
+  }
+
+  /* soft ground shadow under the character */
+  .shadow{
+    position:absolute;
+    bottom:3vmin;
+    left:50%;
+    transform:translateX(-50%);
+    width:56%;
+    height:9%;
+    pointer-events:none;
+    background: radial-gradient(closest-side, rgba(0,0,0,0.35), rgba(0,0,0,0.05));
+    border-radius:50%;
+    transition: transform 280ms ease, opacity 280ms ease;
+    will-change: transform, opacity;
+    filter: blur(2px);
+  }
+
+  /* Character container */
+  .char{
+    width:82%;
+    max-width:420px;
+    position:relative;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    cursor:pointer;
+    will-change: transform;
+    transition: transform 400ms cubic-bezier(.2,.9,.25,1);
+  }
+
+  /* Two layers using same image so we can move top & bottom separately to fake limb/head motion */
+  .char-top, .char-bottom{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .char-top { z-index:5; }
+  .char-bottom { z-index:3; }
+
+  /* Use the same image twice; placed exactly to overlap */
+  .char img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+    pointer-events:none;
+    user-drag: none;
+    -webkit-user-drag: none;
+  }
+
+  /* Clip top & bottom halves (tweak percentages if needed for your image) */
+  .char-top img{
+    transform-origin: 50% 30%; /* rotate around upper torso/head */
+    clip-path: polygon(0 0, 100% 0, 100% 57%, 0 57%);
+  }
+  .char-bottom img{
+    transform-origin: 50% 90%;
+    clip-path: polygon(0 57%, 100% 57%, 100% 100%, 0 100%);
+  }
+
+  /* --- Animations --- */
+
+  /* Wave: rotate top part left-right quickly a few times */
+  @keyframes waveTop {
+    0% { transform: rotate(-10deg) translateY(0); }
+    50% { transform: rotate(12deg) translateY(-2%); }
+    100% { transform: rotate(-10deg) translateY(0); }
+  }
+  .action-wave .char-top img{
+    animation: waveTop 0.8s ease-in-out 0s 4;
+  }
+
+  /* Jump: whole character translates upward + shadow squashes */
+  @keyframes jumpBody {
+    0% { transform: translateY(0) scale(1); }
+    25% { transform: translateY(-20vmin) scale(1.02); }
+    50% { transform: translateY(0) scale(0.98); }
+    100% { transform: translateY(0) scale(1); }
+  }
+  @keyframes shadowJump {
+    0% { transform: scaleX(1) translateY(0); opacity:0.6; }
+    25% { transform: scaleX(0.6) translateY(10px); opacity:0.35; }
+    50% { transform: scaleX(1.05) translateY(0); opacity:0.6; }
+    100% { transform: scaleX(1) translateY(0); opacity:0.6; }
+  }
+  .action-jump .char{ animation: jumpBody 700ms cubic-bezier(.25,.8,.25,1) both; }
+  .action-jump .shadow{ animation: shadowJump 700ms cubic-bezier(.25,.8,.25,1) both; }
+
+  /* Spin: 3D rotate Y */
+  @keyframes spinY {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+  }
+  .action-spin .char{
+    animation: spinY 900ms ease-in-out both;
+    transform-style:preserve-3d;
+    backface-visibility:hidden;
+  }
+
+  /* Dance: small repeated bobs + twist */
+  @keyframes danceBody {
+    0% { transform: translateY(0) rotate(-3deg); }
+    25% { transform: translateY(-2vmin) rotate(5deg); }
+    50% { transform: translateY(0) rotate(-3deg); }
+    75% { transform: translateY(-2vmin) rotate(5deg); }
+    100% { transform: translateY(0) rotate(-3deg); }
+  }
+  .action-dance .char{ animation: danceBody 1200ms ease-in-out 0s 3; }
+  .action-dance .char-top img{ animation: waveTop 0.6s ease-in-out 0s 6; }
+
+  /* Stomp: quick squash + recoil */
+  @keyframes stompBody {
+    0% { transform: translateY(0) scaleY(1); }
+    30% { transform: translateY(1vmin) scaleY(0.78); }
+    60% { transform: translateY(-2vmin) scaleY(1.08); }
+    100% { transform: translateY(0) scaleY(1); }
+  }
+  @keyframes shadowStomp {
+    0% { transform: scaleX(1); opacity:0.6; }
+    30% { transform: scaleX(0.5); opacity:0.25; }
+    60% { transform: scaleX(1.3); opacity:0.8; }
+    100% { transform: scaleX(1); opacity:0.6; }
+  }
+  .action-stomp .char{ animation: stompBody 700ms cubic-bezier(.25,.7,.2,1) both; }
+  .action-stomp .shadow{ animation: shadowStomp 700ms cubic-bezier(.25,.7,.2,1) both; }
+
+  /* Float: subtle gentle bob */
+  @keyframes floatBody {
+    0% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-1.8vmin) rotate(1deg); }
+    100% { transform: translateY(0) rotate(-1deg); }
+  }
+  .action-float .char{ animation: floatBody 1800ms ease-in-out 0s 2; }
+
+  /* small performance and smoothing */
+  .char-top img, .char-bottom img { transition: transform 220ms ease; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage" aria-hidden="true">
+    <div class="shadow" id="shadow"></div>
+
+    <div class="char" id="character" title="click me">
+      <!-- bottom half -->
+      <div class="char-bottom">
+        <img src="CCFF7D70-FFEA-4238-9BD1-E822888CE6BF.png" alt="">
+      </div>
+      <!-- top half (so we can animate head/arm separately) -->
+      <div class="char-top">
+        <img src="CCFF7D70-FFEA-4238-9BD1-E822888CE6BF.png" alt="">
+      </div>
+    </div>
+  </div>
+
+<script>
+  (function(){
+    const stage = document.getElementById('stage');
+    const char = document.getElementById('character');
+    const top = char.querySelector('.char-top');
+    const shadow = document.getElementById('shadow');
+
+    // Available actions and their expected durations (ms)
+    const ACTIONS = [
+      {name:'wave', duration: 3200},
+      {name:'jump', duration: 900},
+      {name:'spin', duration: 1000},
+      {name:'dance', duration: 3800},
+      {name:'stomp', duration: 900},
+      {name:'float', duration: 3800}
+    ];
+
+    // pick random action (avoid repeating same twice)
+    let last = -1;
+    function pickAction(){
+      let idx = Math.floor(Math.random()*ACTIONS.length);
+      if (idx === last){
+        idx = (idx + 1) % ACTIONS.length;
+      }
+      last = idx;
+      return ACTIONS[idx];
+    }
+
+    // Apply action by toggling classes on the stage
+    function applyAction(action){
+      // clear any existing action classes first
+      stage.classList.remove(...Array.from(stage.classList).filter(c=>c.startsWith('action-')));
+      // ensure top-level removal for safety
+      top.classList.remove(...Array.from(top.classList).filter(c=>c.startsWith('action-')));
+      // add new class
+      const cls = 'action-' + action.name;
+      // Wave uses top-layer; others use stage
+      if(action.name === 'wave'){
+        top.classList.add(cls);
+      } else {
+        stage.classList.add(cls);
+      }
+      // remove after duration to return to idle
+      setTimeout(()=> {
+        stage.classList.remove(cls);
+        top.classList.remove(cls);
+      }, action.duration + 80); // small buffer
+    }
+
+    // click handler: trigger random action
+    stage.addEventListener('click', (e)=>{
+      // ensure click inside character area (not on shadow gap)
+      const rect = char.getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
+      const action = pickAction();
+      applyAction(action);
+    });
+
+    // keyboard accessibility: press space/enter on focused stage to trigger
+    stage.tabIndex = -1;
+    // optional: if user presses anywhere on the window and focus is not an input, also trigger
+    window.addEventListener('keydown', (ev)=>{
+      if(ev.key === ' ' || ev.key === 'Enter'){
+        ev.preventDefault();
+        const action = pickAction();
+        applyAction(action);
+      }
+    });
+
+    // small idle float so it doesn't look dead (subtle)
+    setTimeout(()=> stage.classList.add('action-float'), 600);
+    setTimeout(()=> stage.classList.remove('action-float'), 2600);
+  })();
+</script>
+</body>
+</html>
