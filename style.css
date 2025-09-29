@@ -1,0 +1,17 @@
+/* सभी डिफ़ॉल्ट मार्जिन और पैडिंग हटाएं */
+* {
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    overflow: hidden; /* स्क्रॉल-बार छिपाएं */
+}
+
+/* कैनवास को पूरी स्क्रीन पर सेट करें */
+.webgl {
+    position: fixed;
+    top: 0;
+    left: 0;
+    outline: none;
+}
